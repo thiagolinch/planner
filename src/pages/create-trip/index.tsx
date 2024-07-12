@@ -2,9 +2,12 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { InviteGuestsModal } from "./invite-guests-modal";
 import { ConfirmTripModal } from "./confirm-trip-modal";
-
 import { DestinationAndDateStep } from "./steps/destination-and-date-step";
 import { InviteGuestsStep } from "./steps/invite-guests-step";
+import { DateRange } from "react-day-picker";
+import { api } from "../../lib/axios";
+
+import logo from "../../assets/imgs/logo.svg"
 
 export function CreateTripPage() {
   const navigate = useNavigate()
@@ -15,6 +18,11 @@ export function CreateTripPage() {
     'diego@rocketseat.com.br',
     'john@acme.com'
   ])
+
+  const [destination, setDestination] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerEmail, setOwnerEmail] = useState('')
+  const [eventStartAndEndDates, setEventStartAndEndDates] = useState<DateRange>()
 
   function openGuestsInput() {
     setIsGuestsInputOpen(true)
@@ -68,17 +76,44 @@ export function CreateTripPage() {
     setEmailsToInvite(newEmailList)
   }
 
-  function createTrip(event: FormEvent<HTMLFormElement>) {
+  async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    navigate('/trips/123')
+    if (!destination) {
+      return
+    }
+
+    if (!eventStartAndEndDates?.from || !eventStartAndEndDates?.to) {
+      return
+    }
+
+    if (emailsToInvite.length === 0) {
+      return
+    }
+
+    if (!ownerName || !ownerEmail) {
+      return
+    }
+
+    const response = await api.post('/trips', {
+      destination,
+      starts_at: eventStartAndEndDates.from,
+      ends_at: eventStartAndEndDates.to,
+      emails_to_invite: emailsToInvite,
+      owner_name: ownerName,
+      owner_email: ownerEmail
+    })
+
+    const { tripId } = response.data
+
+    navigate(`/trips/${tripId}`)
   }
 
   return (
     <div className="h-screen flex items-center justify-center bg-pattern bg-no-repeat bg-center">
       <div className="max-w-3xl w-full px-6 text-center space-y-10">
         <div className="flex flex-col items-center gap-3">
-          <img src="/logo.svg" alt="plann.er" />
+          <img src={logo} alt="plann.er" />
           <p className="text-zinc-300 text-lg">
             Convide seus amigos e planeje sua próxima viagem!
           </p>
@@ -89,6 +124,9 @@ export function CreateTripPage() {
             closeGuestsInput={closeGuestsInput}
             isGuestsInputOpen={isGuestsInputOpen}
             openGuestsInput={openGuestsInput}
+            setDestination={setDestination}
+            setEventStartAndEndDates={setEventStartAndEndDates}
+            eventStartAndEndDates={eventStartAndEndDates}
           />
 
           {isGuestsInputOpen && (
@@ -119,6 +157,12 @@ export function CreateTripPage() {
         <ConfirmTripModal 
           closeConfirmTripModal={closeConfirmTripModal}
           createTrip={createTrip}
+          setOwnerName={setOwnerName}
+          setOwnerEmail={setOwnerEmail}
+          destination={destination}
+          dataTripFrom={eventStartAndEndDates?.from?.getDate()}
+          dataTripTo={eventStartAndEndDates?.to?.getDate()}
+          dataTripMonth={eventStartAndEndDates?.from?.toLocaleString('default', { month: 'long' })}
         />
       )}
     </div>
